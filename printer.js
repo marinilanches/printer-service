@@ -1,32 +1,41 @@
 const escpos = require("escpos");
 escpos.USB = require("escpos-usb");
 
-module.exports = function print(pedido) {
+function printOrder(pedido) {
+  return new Promise((resolve, reject) => {
+    try {
+      const device = new escpos.USB();
+      const printer = new escpos.Printer(device);
 
-  try {
-    const device = new escpos.USB();
-    const printer = new escpos.Printer(device);
+      device.open(() => {
+        printer
+          .font("a")
+          .align("ct")
+          .size(1, 1)
+          .text("🍔 NOVO PEDIDO")
+          .text("----------------------")
+          .text(`Mesa: ${pedido.numeroMesa}`)
+          .text(`Status: ${pedido.status}`)
+          .text("----------------------");
 
-    device.open(() => {
+        pedido.itens.forEach((item) => {
+          printer.text(
+            `${item.quantidade}x ${item.nome} - R$ ${item.valorUnitario}`
+          );
+        });
 
-      printer
-        .align("ct")
-        .text("🍔 NOVO PEDIDO")
-        .text("--------------------")
-        .align("lt");
+        printer
+          .text("----------------------")
+          .text(`TOTAL: R$ ${pedido.valorTotal}`)
+          .cut()
+          .close();
 
-      pedido.itens.forEach(item => {
-        printer.text(`${item.quantidade}x ${item.nome}`);
+        resolve();
       });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
 
-      printer
-        .text("--------------------")
-        .text(`TOTAL: R$ ${pedido.valorTotal}`)
-        .cut()
-        .close();
-    });
-
-  } catch (err) {
-    console.error("Erro na impressora:", err);
-  }
-};
+module.exports = { printOrder };
